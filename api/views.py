@@ -86,20 +86,48 @@ def _notify_new_booking(booking):
     contact = settings.CONTACT_EMAIL
     if not contact:
         return
-    subject = f"Nueva reserva: {booking.client_name} - {booking.slot.date} {booking.slot.time}"
+    # Notify psychologist
+    subject = f"Nueva reserva: {booking.client_name} - {booking.slot.date} {booking.slot.time:%H:%M}"
     message = (
-        f"Nombre: {booking.client_name}\n"
+        f"Se ha recibido una nueva solicitud de reserva:\n\n"
+        f"Paciente: {booking.client_name}\n"
         f"Email: {booking.client_email}\n"
         f"Teléfono: {booking.client_phone}\n"
         f"Mensaje: {booking.message}\n"
         f"Fecha: {booking.slot.date}\n"
-        f"Hora: {booking.slot.time}\n"
-        f"Estado: Pendiente de confirmación"
+        f"Hora: {booking.slot.time:%H:%M}\n"
+        f"Estado: Pendiente de confirmación\n\n"
+        f"Ingresa al panel de administración para confirmar o cancelar."
     )
-    try:
-        send_mail(subject, message, settings.EMAIL_HOST_USER, [contact], fail_silently=True)
-    except Exception:
-        pass
+    send_mail(subject, message, settings.EMAIL_HOST_USER, [contact], fail_silently=False)
+
+    # Notify patient
+    patient_subject = "Solicitud de hora recibida - ps. Franco Álvarez"
+    patient_message = (
+        f"Hola {booking.client_name},\n\n"
+        f"Hemos recibido tu solicitud de reserva para el día {booking.slot.date} a las {booking.slot.time:%H:%M}.\n\n"
+        f"Pronto recibirás una confirmación por este mismo medio.\n\n"
+        f"Si tienes dudas, escríbeme por WhatsApp al +56 9 5698 5589.\n\n"
+        f"Saludos,\n"
+        f"ps. Franco Álvarez"
+    )
+    send_mail(patient_subject, patient_message, settings.EMAIL_HOST_USER, [booking.client_email], fail_silently=False)
+
+
+def _notify_booking_confirmed(booking):
+    """Notify patient that their booking was confirmed"""
+    if not booking.client_email:
+        return
+    subject = "Reserva confirmada - ps. Franco Álvarez"
+    message = (
+        f"Hola {booking.client_name},\n\n"
+        f"Tu reserva ha sido CONFIRMADA para el día {booking.slot.date} a las {booking.slot.time:%H:%M}.\n\n"
+        f"La sesión se realizará de forma online. Te enviaré el enlace de videollamada antes de la sesión.\n\n"
+        f"Si necesitas reagendar o cancelar, escríbeme por WhatsApp al +56 9 5698 5589.\n\n"
+        f"Saludos,\n"
+        f"ps. Franco Álvarez"
+    )
+    send_mail(subject, message, settings.EMAIL_HOST_USER, [booking.client_email], fail_silently=False)
 
 
 # --- Admin endpoints (simple token auth) ---
@@ -143,6 +171,8 @@ def admin_manage_slot(request, slot_id):
             return Response({'error': 'Estado inválido'}, status=400)
         slot.booking.status = new_status
         slot.booking.save()
+        if new_status == 'confirmed':
+            _notify_booking_confirmed(slot.booking)
         return Response({'status': 'ok', 'booking_status': new_status})
 
     return Response({'error': 'Acción no reconocida'}, status=400)
