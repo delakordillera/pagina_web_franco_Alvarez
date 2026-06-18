@@ -1199,9 +1199,9 @@ footer.bg-dark {
 
   /* whatsapp tooltip smaller */
   #whatsappTooltip {
-    max-width: 180px !important;
     font-size: 0.75rem !important;
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
+    right: calc(100% + 8px) !important;
   }
 
   /* modal padding */
