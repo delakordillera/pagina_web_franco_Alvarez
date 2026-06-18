@@ -1,3 +1,4 @@
+import os
 from datetime import time, timedelta, datetime
 from django.utils import timezone
 from django.db import transaction
@@ -132,7 +133,7 @@ def _notify_booking_confirmed(booking):
 
 # --- Admin endpoints (simple token auth) ---
 
-ADMIN_PASSWORD = "terapia2026"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 def _check_admin(request):
     pwd = request.headers.get('X-Admin-Password') or request.GET.get('admin_password')
