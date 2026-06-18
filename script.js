@@ -23,6 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const API_URL = window.__API_URL__ || '';
   function apiUrl(path) { return API_URL ? API_URL + path : path; }
 
+  function getCSRFToken() {
+    const name = 'csrftoken';
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+  }
+
   async function apiGet(endpoint) {
     try {
       const r = await fetch(apiUrl(endpoint));
@@ -34,6 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function apiPost(endpoint, data, password) {
     try {
       const headers = { 'Content-Type': 'application/json' };
+      const csrf = getCSRFToken();
+      if (csrf) headers['X-CSRFToken'] = csrf;
       if (password) headers['X-Admin-Password'] = password;
       const r = await fetch(apiUrl(endpoint), { method: 'POST', headers, body: JSON.stringify(data) });
       return { ok: r.ok, data: r.ok ? await r.json() : await r.json().catch(() => null) };
