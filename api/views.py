@@ -1,4 +1,6 @@
 import os
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.http import JsonResponse
 from datetime import time, timedelta, datetime
 from django.utils import timezone
 from django.db import transaction
@@ -129,6 +131,11 @@ def _notify_booking_confirmed(booking):
         f"ps. Franco Álvarez"
     )
     send_mail(subject, message, settings.EMAIL_HOST_USER, [booking.client_email], fail_silently=False)
+
+
+@ensure_csrf_cookie
+def get_csrf(request):
+    return JsonResponse({'detail': 'CSRF cookie set'})
 
 
 # --- Admin endpoints (simple token auth) ---

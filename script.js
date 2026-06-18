@@ -791,6 +791,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   adminLoginBtn?.addEventListener("click", async () => {
     const pwd = adminPasswordInput?.value || "";
+    await fetch(apiUrl('/api/csrf/'), { credentials: 'same-origin' });
     const result = await apiGet(`/api/admin/bookings/?admin_password=${encodeURIComponent(pwd)}`);
     if (result && !result.error) {
       adminPassword = pwd;
@@ -1197,8 +1198,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Open admin panel via URL param ?admin
-  if (window.location.search.includes("admin") && adminModal) {
+  // Open admin panel via URL param ?gestion
+  if (window.location.search.includes("gestion") && adminModal) {
     if (getAdminSession()) {
       const bsModal = new bootstrap.Modal(adminModal);
       bsModal.show();
