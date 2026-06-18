@@ -1,17 +1,22 @@
 from django.contrib import admin
 from .models import Slot, Booking, DayBlock
 
+admin.site.site_header = "Panel de Administración"
+admin.site.site_title = "Administración"
+admin.site.index_title = "Gestión de horarios y reservas"
+
 @admin.register(Slot)
 class SlotAdmin(admin.ModelAdmin):
     list_display = ['date', 'time', 'status', 'booking_info']
     list_filter = ['date', 'status']
     search_fields = ['date']
+    date_hierarchy = 'date'
 
     def booking_info(self, obj):
         if hasattr(obj, 'booking'):
-            return f"{obj.booking.client_name} ({obj.booking.status})"
-        return "—"
-    booking_info.short_description = 'Reserva'
+            return f"{obj.booking.client_name} ({obj.booking.get_status_display()})"
+        return "-"
+    booking_info.short_description = 'Paciente'
 
 
 @admin.register(Booking)
