@@ -19,6 +19,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const BOOKINGS_STORAGE_KEY = "franco_alvarez_bookings";
   const DEFAULT_SLOTS = [];
 
+  // --- API configuration ---
+  const API_URL = window.__API_URL__ || '';
+  function apiUrl(path) { return API_URL ? API_URL + path : path; }
+
+  async function apiGet(endpoint) {
+    try {
+      const r = await fetch(apiUrl(endpoint));
+      if (!r.ok) throw new Error('API error');
+      return await r.json();
+    } catch { return null; }
+  }
+
+  async function apiPost(endpoint, data, password) {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (password) headers['X-Admin-Password'] = password;
+      const r = await fetch(apiUrl(endpoint), { method: 'POST', headers, body: JSON.stringify(data) });
+      return { ok: r.ok, data: r.ok ? await r.json() : await r.json().catch(() => null) };
+    } catch { return null; }
+  }
+
+  let cachedSlots = {}; // simple in-memory cache for current day
+
+  async function fetchSlotsFromApi(dateStr) {
+    const data = await apiGet(`/api/slots/?date=${dateStr}`);
+    if (!data || !data.slots) return null;
+    cachedSlots[dateStr] = data;
+    return data;
+  }
+
+  function slotsFromCache(dateStr) {
+    return cachedSlots[dateStr] || null;
+  }
+
   // --- Dark Mode ---
   const darkModeToggle = document.getElementById("darkModeToggle");
   const storedTheme = window.localStorage.getItem("franco_theme");
@@ -203,10 +237,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getSlotsForDate(dateStr) {
-    if (!dateStr) return [...DEFAULT_SLOTS];
-    if (isDateBlocked(dateStr)) return [];
+    if (!dateStr) return { slots: [...DEFAULT_SLOTS], isApi: false };
+    // Try API cache first
+    const cached = slotsFromCache(dateStr);
+    if (cached) {
+      if (cached.all_blocked) return { slots: [], isApi: true };
+      const available = cached.slots
+        .filter(s => s.status === 'available' && !s.booking_status)
+        .map(s => s.time.slice(0, 5));
+      return { slots: available, isApi: true };
+    }
+    // Fallback to localStorage
+    if (isDateBlocked(dateStr)) return { slots: [], isApi: false };
     const blocked = getBlockedSlots(dateStr);
-    return DEFAULT_SLOTS.filter(slot => !blocked.includes(slot));
+    return { slots: DEFAULT_SLOTS.filter(slot => !blocked.includes(slot)), isApi: false };
   }
 
   function showToast(message) {
@@ -244,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderSlots(dateStr) {
     if (!slotsGrid) return;
 
-    const slots = getSlotsForDate(dateStr);
+    const { slots, isApi } = getSlotsForDate(dateStr);
     const bookedSlots = getBookedSlots(dateStr);
     selectedTime = "";
 
@@ -261,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     slots.forEach((time) => {
       const button = document.createElement("button");
-      const isBooked = bookedSlots.includes(time);
+      const isBooked = bookedSlots.includes(time) || (isApi && cachedSlots[dateStr]?.slots?.find(s => s.time.slice(0, 5) === time && s.booking_status));
       const status = getBookingStatus(dateStr, time);
       const isConfirmed = isBooked && status === "confirmed";
 
@@ -318,7 +362,11 @@ document.addEventListener("DOMContentLoaded", () => {
       locale: "es",
       disableMobile: true,
       onChange: function (_selectedDates, dateStr) {
-        renderSlots(dateStr);
+        if (API_URL) {
+          fetchSlotsFromApi(dateStr).finally(() => renderSlots(dateStr));
+        } else {
+          renderSlots(dateStr);
+        }
       }
     });
   }
@@ -361,38 +409,58 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    persistBooking(bookingDate, selectedTime);
-
-    const message = buildWhatsAppMessage({
-      fullName,
-      email,
-      phone,
-      reason,
-      bookingDate,
-      selectedTime
-    });
-
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-
-    formStatus.textContent = "Solicitud enviada correctamente por WhatsApp.";
-    formStatus.className = "small text-success mb-3 d-block";
-
-    const submittedDate = bookingDate;
-    bookingForm.reset();
-    selectedTime = "";
-
-    if (selectedSlotText) {
-      selectedSlotText.textContent = "";
-      selectedSlotText.classList.add("visually-hidden");
+    async function submitBooking() {
+      if (API_URL) {
+        const cache = cachedSlots[bookingDate];
+        const slotEntry = cache?.slots?.find(s => s.time.slice(0, 5) === selectedTime);
+        if (slotEntry) {
+          const result = await apiPost('/api/book/', {
+            slot: slotEntry.id,
+            client_name: fullName,
+            client_email: email,
+            client_phone: phone,
+            message: reason || '',
+          }, null);
+          if (result && result.ok) {
+            persistBooking(bookingDate, selectedTime);
+            return true;
+          }
+        }
+      }
+      persistBooking(bookingDate, selectedTime);
+      return false;
     }
 
-    if (bookingDateInput?._flatpickr) {
-      bookingDateInput._flatpickr.clear();
-    }
+    submitBooking().then((apiSuccess) => {
+      const message = buildWhatsAppMessage({
+        fullName,
+        email,
+        phone,
+        reason,
+        bookingDate,
+        selectedTime
+      });
 
-    renderSlots(submittedDate);
-    showToast("Solicitud enviada correctamente por WhatsApp.");
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
+      const submittedDate = bookingDate;
+      bookingForm.reset();
+      selectedTime = "";
+
+      if (selectedSlotText) {
+        selectedSlotText.textContent = "";
+        selectedSlotText.classList.add("visually-hidden");
+      }
+
+      if (bookingDateInput?._flatpickr) {
+        bookingDateInput._flatpickr.clear();
+      }
+
+      renderSlots(submittedDate);
+      showToast(apiSuccess
+        ? "Solicitud enviada correctamente."
+        : "Solicitud enviada correctamente por WhatsApp.");
 
     window.setTimeout(() => {
       if (bookingModal) {
@@ -402,6 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
       formStatus.textContent = "";
       formStatus.className = "small";
     }, 900);
+  });
   });
 
   if (cookieBanner && acceptCookies) {
@@ -711,10 +780,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (adminPanel) adminPanel.classList.add("d-none");
   }
 
-  adminLoginBtn?.addEventListener("click", () => {
+  let adminPassword = "";
+
+  adminLoginBtn?.addEventListener("click", async () => {
     const pwd = adminPasswordInput?.value || "";
-    const storedPwd = window.localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-    if (pwd === storedPwd) {
+    let ok = false;
+    if (API_URL) {
+      const result = await apiPost('/api/admin/bookings/', {}, pwd);
+      ok = result && result.ok;
+    }
+    if (!ok) {
+      const storedPwd = window.localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
+      ok = pwd === storedPwd;
+    }
+    if (ok) {
+      adminPassword = pwd;
       setAdminSession(true);
       showAdminPanel();
       initAdminDatePicker();
@@ -728,6 +808,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   adminLogoutBtn?.addEventListener("click", () => {
+    adminPassword = "";
     setAdminSession(false);
     hideAdminPanel();
     if (adminExportStatus) adminExportStatus.textContent = "";
@@ -765,7 +846,11 @@ document.addEventListener("DOMContentLoaded", () => {
       locale: "es",
       disableMobile: true,
       onChange: function (_selectedDates, dateStr) {
-        renderAdminSlots(dateStr);
+        if (API_URL) {
+          fetchSlotsFromApi(dateStr).finally(() => renderAdminSlots(dateStr));
+        } else {
+          renderAdminSlots(dateStr);
+        }
       }
     });
   }
@@ -775,6 +860,108 @@ document.addEventListener("DOMContentLoaded", () => {
     adminSlotsGrid.innerHTML = "";
     if (!dateStr) {
       adminSlotsGrid.innerHTML = '<p class="text-muted small m-0 text-center py-4">Selecciona una fecha.</p>';
+      return;
+    }
+
+    const cached = slotsFromCache(dateStr);
+    const useApi = !!(API_URL && cached);
+
+    if (useApi) {
+      if (cached.all_blocked) {
+        adminSlotsGrid.innerHTML = '<p class="text-muted small m-0 text-center py-4">Día bloqueado.</p>';
+        if (adminBlockAllBtn) adminBlockAllBtn.textContent = "Habilitar todo";
+        return;
+      }
+      cached.slots.forEach((slot) => {
+        const isBlocked = slot.status === 'blocked';
+        const isBooked = !!slot.booking_status;
+
+        const row = document.createElement("div");
+        row.className = "admin-slot";
+
+        const timeSpan = document.createElement("span");
+        timeSpan.className = "slot-time";
+        timeSpan.textContent = slot.time.slice(0, 5);
+
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "slot-status";
+        if (isBlocked) {
+          statusSpan.textContent = "Bloqueado";
+          statusSpan.classList.add("blocked");
+        } else if (isBooked && slot.booking_status === "confirmed") {
+          statusSpan.textContent = "Confirmado";
+          statusSpan.classList.add("confirmed");
+        } else if (isBooked) {
+          statusSpan.textContent = "Reservado";
+          statusSpan.classList.add("booked");
+        } else {
+          statusSpan.textContent = "Disponible";
+          statusSpan.classList.add("available");
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "slot-actions";
+
+        if (isBlocked) {
+          const habilitar = document.createElement("button");
+          habilitar.textContent = "Habilitar";
+          habilitar.addEventListener("click", async () => {
+            await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'toggle_block' }, adminPassword);
+            const data = await fetchSlotsFromApi(dateStr);
+            renderAdminSlots(dateStr);
+          });
+          actions.appendChild(habilitar);
+        } else {
+          const bloquear = document.createElement("button");
+          bloquear.textContent = "Bloquear";
+          bloquear.addEventListener("click", async () => {
+            await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'toggle_block' }, adminPassword);
+            const data = await fetchSlotsFromApi(dateStr);
+            renderAdminSlots(dateStr);
+          });
+          actions.appendChild(bloquear);
+
+          if (isBooked) {
+            if (slot.booking_status !== "confirmed") {
+              const confirmar = document.createElement("button");
+              confirmar.textContent = "Confirmar";
+              confirmar.addEventListener("click", async () => {
+                await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'confirmed' }, adminPassword);
+                const data = await fetchSlotsFromApi(dateStr);
+                renderAdminSlots(dateStr);
+              });
+              actions.appendChild(confirmar);
+            } else {
+              const pendiente = document.createElement("button");
+              pendiente.textContent = "Pendiente";
+              pendiente.addEventListener("click", async () => {
+                await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'pending' }, adminPassword);
+                const data = await fetchSlotsFromApi(dateStr);
+                renderAdminSlots(dateStr);
+              });
+              actions.appendChild(pendiente);
+            }
+
+            const cancelar = document.createElement("button");
+            cancelar.textContent = "Cancelar";
+            cancelar.addEventListener("click", async () => {
+              await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'cancelled' }, adminPassword);
+              const data = await fetchSlotsFromApi(dateStr);
+              renderAdminSlots(dateStr);
+            });
+            actions.appendChild(cancelar);
+          }
+        }
+
+        row.appendChild(timeSpan);
+        row.appendChild(statusSpan);
+        row.appendChild(actions);
+        adminSlotsGrid.appendChild(row);
+      });
+
+      if (adminBlockAllBtn) {
+        adminBlockAllBtn.textContent = "Bloquear todo";
+      }
       return;
     }
 
@@ -898,9 +1085,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  adminBlockAllBtn?.addEventListener("click", () => {
+  adminBlockAllBtn?.addEventListener("click", async () => {
     const dateStr = adminDateInput?.value;
     if (!dateStr) return;
+    if (API_URL) {
+      const cached = slotsFromCache(dateStr);
+      const currentlyBlocked = cached?.all_blocked;
+      await apiPost('/api/admin/block-day/', { date: dateStr, block: !currentlyBlocked }, adminPassword);
+      const data = await fetchSlotsFromApi(dateStr);
+      renderAdminSlots(dateStr);
+      return;
+    }
     const blocked = getAdminBlocked();
     const isAllBlocked = blocked[dateStr] === "__all__";
     if (isAllBlocked) {
@@ -916,7 +1111,22 @@ document.addEventListener("DOMContentLoaded", () => {
     renderAdminSlots(dateStr);
   });
 
-  adminExportBtn?.addEventListener("click", () => {
+  adminExportBtn?.addEventListener("click", async () => {
+    if (API_URL) {
+      const result = await apiGet(`/api/admin/export/?admin_password=${adminPassword}`);
+      if (result) {
+        const output = JSON.stringify(result, null, 2);
+        navigator.clipboard.writeText(output).then(() => {
+          if (adminExportStatus) adminExportStatus.textContent = "Configuración copiada al portapapeles.";
+        }).catch(() => {
+          if (adminExportStatus) adminExportStatus.textContent = "Copia manual: " + output;
+        });
+      } else {
+        if (adminExportStatus) adminExportStatus.textContent = "Error al exportar.";
+      }
+      if (adminImportBox) adminImportBox.classList.add("d-none");
+      return;
+    }
     const blocked = getAdminBlocked();
     const output = JSON.stringify(blocked, null, 0);
     navigator.clipboard.writeText(output).then(() => {
@@ -932,9 +1142,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (adminExportStatus) adminExportStatus.textContent = "";
   });
 
-  adminImportApplyBtn?.addEventListener("click", () => {
+  adminImportApplyBtn?.addEventListener("click", async () => {
     const text = adminImportText?.value?.trim();
     if (!text) return;
+    if (API_URL) {
+      try {
+        const parsed = JSON.parse(text);
+        const result = await apiPost('/api/admin/import/', parsed, adminPassword);
+        if (result && result.ok) {
+          if (adminImportBox) adminImportBox.classList.add("d-none");
+          if (adminImportText) adminImportText.value = "";
+          if (adminExportStatus) adminExportStatus.textContent = "Configuración importada correctamente.";
+          const dateStr = adminDateInput?.value;
+          if (dateStr) {
+            await fetchSlotsFromApi(dateStr);
+            renderAdminSlots(dateStr);
+          }
+        } else {
+          if (adminExportStatus) adminExportStatus.textContent = "Error al importar.";
+        }
+      } catch {
+        if (adminExportStatus) adminExportStatus.textContent = "JSON inválido. Revisa el formato.";
+      }
+      return;
+    }
     try {
       const parsed = JSON.parse(text);
       if (typeof parsed === "object" && !Array.isArray(parsed)) {
