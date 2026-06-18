@@ -904,7 +904,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (isBlocked) {
           const habilitar = document.createElement("button");
-          habilitar.textContent = "Habilitar";
+          habilitar.className = "btn-enable";
+          habilitar.innerHTML = '<i class="fa-regular fa-circle-check"></i>';
+          habilitar.title = "Habilitar";
           habilitar.addEventListener("click", async () => {
             await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'toggle_block' }, adminPassword);
             const data = await fetchSlotsFromApi(dateStr);
@@ -913,7 +915,9 @@ document.addEventListener("DOMContentLoaded", () => {
           actions.appendChild(habilitar);
         } else {
           const bloquear = document.createElement("button");
-          bloquear.textContent = "Bloquear";
+          bloquear.className = "btn-block";
+          bloquear.innerHTML = '<i class="fa-regular fa-circle-xmark"></i>';
+          bloquear.title = "Bloquear";
           bloquear.addEventListener("click", async () => {
             await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'toggle_block' }, adminPassword);
             const data = await fetchSlotsFromApi(dateStr);
@@ -924,7 +928,9 @@ document.addEventListener("DOMContentLoaded", () => {
           if (isBooked) {
             if (slot.booking_status !== "confirmed") {
               const confirmar = document.createElement("button");
-              confirmar.textContent = "Confirmar";
+              confirmar.className = "btn-confirm";
+              confirmar.innerHTML = '<i class="fa-regular fa-thumbs-up"></i>';
+              confirmar.title = "Confirmar";
               confirmar.addEventListener("click", async () => {
                 await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'confirmed' }, adminPassword);
                 const data = await fetchSlotsFromApi(dateStr);
@@ -933,7 +939,9 @@ document.addEventListener("DOMContentLoaded", () => {
               actions.appendChild(confirmar);
             } else {
               const pendiente = document.createElement("button");
-              pendiente.textContent = "Pendiente";
+              pendiente.className = "btn-pending";
+              pendiente.innerHTML = '<i class="fa-regular fa-clock"></i>';
+              pendiente.title = "Pendiente";
               pendiente.addEventListener("click", async () => {
                 await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'pending' }, adminPassword);
                 const data = await fetchSlotsFromApi(dateStr);
@@ -943,7 +951,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const cancelar = document.createElement("button");
-            cancelar.textContent = "Cancelar";
+            cancelar.className = "btn-cancel";
+            cancelar.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+            cancelar.title = "Cancelar";
             cancelar.addEventListener("click", async () => {
               await apiPost(`/api/admin/slot/${slot.id}/`, { action: 'update_booking', booking_status: 'cancelled' }, adminPassword);
               const data = await fetchSlotsFromApi(dateStr);
@@ -1004,7 +1014,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (isBlocked) {
         const habilitar = document.createElement("button");
-        habilitar.textContent = "Habilitar";
+        habilitar.className = "btn-enable";
+        habilitar.innerHTML = '<i class="fa-regular fa-circle-check"></i>';
         habilitar.title = "Habilitar este horario";
         habilitar.addEventListener("click", () => {
           const current = getAdminBlocked();
@@ -1024,7 +1035,8 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(habilitar);
       } else {
         const bloquear = document.createElement("button");
-        bloquear.textContent = "Bloquear";
+        bloquear.className = "btn-block";
+        bloquear.innerHTML = '<i class="fa-regular fa-circle-xmark"></i>';
         bloquear.title = "Deshabilitar este horario";
         bloquear.addEventListener("click", () => {
           const current = getAdminBlocked();
@@ -1040,7 +1052,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isBooked) {
           if (status !== "confirmed") {
             const confirmar = document.createElement("button");
-            confirmar.textContent = "Confirmar";
+            confirmar.className = "btn-confirm";
+            confirmar.innerHTML = '<i class="fa-regular fa-thumbs-up"></i>';
             confirmar.title = "Marcar como confirmada";
             confirmar.addEventListener("click", () => {
               setBookingStatus(dateStr, time, "confirmed");
@@ -1049,7 +1062,8 @@ document.addEventListener("DOMContentLoaded", () => {
             actions.appendChild(confirmar);
           } else {
             const pendiente = document.createElement("button");
-            pendiente.textContent = "Pendiente";
+            pendiente.className = "btn-pending";
+            pendiente.innerHTML = '<i class="fa-regular fa-clock"></i>';
             pendiente.title = "Volver a pendiente";
             pendiente.addEventListener("click", () => {
               setBookingStatus(dateStr, time, "pending");
@@ -1059,7 +1073,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           const cancelar = document.createElement("button");
-          cancelar.textContent = "Cancelar";
+          cancelar.className = "btn-cancel";
+          cancelar.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
           cancelar.title = "Cancelar y liberar horario";
           cancelar.addEventListener("click", () => {
             const bookings = getStoredBookings();

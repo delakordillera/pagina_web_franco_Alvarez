@@ -935,12 +935,15 @@
         </div>
         <div class="modal-body p-4">
           <div id="adminLogin">
-            <p class="text-muted small mb-3">Ingresa la contraseña para acceder al panel de gestión de horas.</p>
+            <div class="admin-lock-icon">
+              <i class="fa-regular fa-lock"></i>
+            </div>
+            <p class="text-muted small text-center mb-3">Ingresa la contraseña para acceder al panel de gestión.</p>
             <div class="d-flex gap-2">
               <input type="password" id="adminPassword" class="form-control rounded-3" placeholder="Contraseña" />
               <button type="button" id="adminLoginBtn" class="btn btn-dark rounded-3 px-4">Entrar</button>
             </div>
-            <p id="adminLoginError" class="small text-danger mt-2 d-none">Contraseña incorrecta.</p>
+            <p id="adminLoginError" class="small text-danger mt-2 d-none text-center">Contraseña incorrecta.</p>
           </div>
           <div id="adminPanel" class="d-none">
             <div class="d-flex justify-content-between align-items-center mb-3">
