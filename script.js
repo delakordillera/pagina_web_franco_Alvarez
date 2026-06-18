@@ -20,7 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const DEFAULT_SLOTS = [];
 
   // --- API configuration ---
-  const API_URL = window.__API_URL__ || '';
+  const API_URL = window.__API_URL__;
+  const API_CONFIGURED = window.__API_URL__ !== undefined;
   function apiUrl(path) { return API_URL ? API_URL + path : path; }
 
   function getCSRFToken() {
@@ -369,7 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
       locale: "es",
       disableMobile: true,
       onChange: function (_selectedDates, dateStr) {
-        if (API_URL) {
+        if (API_CONFIGURED) {
           fetchSlotsFromApi(dateStr).finally(() => renderSlots(dateStr));
         } else {
           renderSlots(dateStr);
@@ -417,7 +418,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function submitBooking() {
-      if (API_URL) {
+      if (API_CONFIGURED) {
         const cache = cachedSlots[bookingDate];
         const slotEntry = cache?.slots?.find(s => s.time.slice(0, 5) === selectedTime);
         if (slotEntry) {
@@ -846,7 +847,7 @@ document.addEventListener("DOMContentLoaded", () => {
       locale: "es",
       disableMobile: true,
       onChange: function (_selectedDates, dateStr) {
-        if (API_URL) {
+        if (API_CONFIGURED) {
           fetchSlotsFromApi(dateStr).finally(() => renderAdminSlots(dateStr));
         } else {
           renderAdminSlots(dateStr);
@@ -1103,7 +1104,7 @@ document.addEventListener("DOMContentLoaded", () => {
   adminBlockAllBtn?.addEventListener("click", async () => {
     const dateStr = adminDateInput?.value;
     if (!dateStr) return;
-    if (API_URL) {
+    if (API_CONFIGURED) {
       const cached = slotsFromCache(dateStr);
       const currentlyBlocked = cached?.all_blocked;
       await apiPost('/api/admin/block-day/', { date: dateStr, block: !currentlyBlocked }, adminPassword);
@@ -1127,7 +1128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   adminExportBtn?.addEventListener("click", async () => {
-    if (API_URL) {
+    if (API_CONFIGURED) {
       const result = await apiGet(`/api/admin/export/?admin_password=${adminPassword}`);
       if (result) {
         const output = JSON.stringify(result, null, 2);
@@ -1160,7 +1161,7 @@ document.addEventListener("DOMContentLoaded", () => {
   adminImportApplyBtn?.addEventListener("click", async () => {
     const text = adminImportText?.value?.trim();
     if (!text) return;
-    if (API_URL) {
+    if (API_CONFIGURED) {
       try {
         const parsed = JSON.parse(text);
         const result = await apiPost('/api/admin/import/', parsed, adminPassword);

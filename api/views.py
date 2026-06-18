@@ -76,8 +76,11 @@ def create_booking(request):
         slot.save()
         booking = serializer.save()
 
-    # send email notification
-    _notify_new_booking(booking)
+    # send email notification (non-blocking: don't break API if email fails)
+    try:
+        _notify_new_booking(booking)
+    except Exception:
+        pass
 
     return Response({
         'message': 'Reserva creada correctamente',
@@ -180,7 +183,10 @@ def admin_manage_slot(request, slot_id):
         slot.booking.status = new_status
         slot.booking.save()
         if new_status == 'confirmed':
-            _notify_booking_confirmed(slot.booking)
+            try:
+                _notify_booking_confirmed(slot.booking)
+            except Exception:
+                pass
         return Response({'status': 'ok', 'booking_status': new_status})
 
     return Response({'error': 'Acción no reconocida'}, status=400)
