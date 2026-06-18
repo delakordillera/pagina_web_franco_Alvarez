@@ -1050,24 +1050,6 @@ footer.bg-dark {
     ADMIN PANEL
     ===================================================================== */
 
-#adminLogin .admin-lock-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--sage-100, #e8efe8);
-  color: var(--sage-700, #2d4a38);
-  font-size: 1.25rem;
-  margin: 0 auto 0.75rem;
-}
-
-[data-theme="dark"] #adminLogin .admin-lock-icon {
-  background: var(--sage-800, #1c3129);
-  color: var(--sage-200, #c8e6c9);
-}
-
 #adminPanel .admin-section-title {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -1184,11 +1166,6 @@ footer.bg-dark {
 #adminSlotsGrid .admin-slot .slot-actions .btn-pending:hover {
   background: #fff3cd;
   border-color: #f0e0a0;
-}
-
-/* easter-egg hint on brand */
-.brand-click-hint {
-  cursor: pointer;
 }
 
 /* ===================================================================== 

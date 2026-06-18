@@ -703,96 +703,202 @@ document.addEventListener("DOMContentLoaded", () => {
     downloadPdfBtn.innerHTML = originalText;
   });
 
-  // --- Admin Panel ---
-  const adminModal = document.getElementById("adminModal");
-  const adminLogin = document.getElementById("adminLogin");
-  const adminPanel = document.getElementById("adminPanel");
-  const adminPasswordInput = document.getElementById("adminPassword");
-  const adminLoginBtn = document.getElementById("adminLoginBtn");
-  const adminLoginError = document.getElementById("adminLoginError");
-  const adminLogoutBtn = document.getElementById("adminLogoutBtn");
-  const adminDateInput = document.getElementById("adminDate");
-  const adminCalendarContainer = document.getElementById("adminCalendarContainer");
-  const adminSlotsGrid = document.getElementById("adminSlotsGrid");
-  const adminBlockAllBtn = document.getElementById("adminBlockAllBtn");
-  const adminExportBtn = document.getElementById("adminExportBtn");
-  const adminImportBtn = document.getElementById("adminImportBtn");
-  const adminExportStatus = document.getElementById("adminExportStatus");
-  const adminImportBox = document.getElementById("adminImportBox");
-  const adminImportText = document.getElementById("adminImportText");
-  const adminImportApplyBtn = document.getElementById("adminImportApplyBtn");
-
-  let brandClickCount = 0;
-  const brandLink = document.querySelector(".navbar-brand");
-  brandLink?.classList.add("brand-click-hint");
-  brandLink?.addEventListener("click", (e) => {
-    if (adminModal && adminModal.getAttribute("aria-hidden") !== "false") {
-      brandClickCount++;
-      if (brandClickCount >= 5) {
-        brandClickCount = 0;
-        if (getAdminSession()) {
-          showAdminPanel();
-        }
-        const bsModal = new bootstrap.Modal(adminModal);
-        bsModal.show();
-      }
-      setTimeout(() => { brandClickCount = 0; }, 2000);
-    }
-  });
-
-  function showAdminPanel() {
-    if (adminLogin) adminLogin.classList.add("d-none");
-    if (adminPanel) adminPanel.classList.remove("d-none");
-    if (adminPasswordInput) adminPasswordInput.value = "";
-    if (adminLoginError) adminLoginError.classList.add("d-none");
-  }
-
-  function hideAdminPanel() {
-    if (adminLogin) adminLogin.classList.remove("d-none");
-    if (adminPanel) adminPanel.classList.add("d-none");
-  }
-
+  // --- Admin Panel (injected dynamically) ---
+  let adminModal = null;
+  let adminPanel = null;
   let adminPassword = "";
+  let adminDateInput = null;
+  let adminCalendarContainer = null;
+  let adminSlotsGrid = null;
+  let adminBlockAllBtn = null;
+  let adminExportBtn = null;
+  let adminImportBtn = null;
+  let adminExportStatus = null;
+  let adminImportBox = null;
+  let adminImportText = null;
+  let adminImportApplyBtn = null;
 
-  adminLoginBtn?.addEventListener("click", async () => {
-    const pwd = adminPasswordInput?.value || "";
-    await fetch(apiUrl('/api/csrf/'), { credentials: 'same-origin' });
-    const result = await apiGet(`/api/admin/bookings/?admin_password=${encodeURIComponent(pwd)}`);
-    if (result && !result.error) {
-      adminPassword = pwd;
-      setAdminSession(true);
-      showAdminPanel();
-      initAdminDatePicker();
-    } else {
-      if (adminLoginError) adminLoginError.classList.remove("d-none");
-    }
-  });
+  function buildAdminModal() {
+    if (document.getElementById("adminModal")) return;
+    const modalHtml = `
+      <div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 bg-light p-4 pb-0">
+              <h3 class="h4 fw-bold text-dark mb-1">Panel de Administración</h3>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div id="adminPanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <p class="text-muted small mb-0">Gestiona los horarios disponibles, confirma reservas y bloquea horas.</p>
+                  <button type="button" id="adminLogoutBtn" class="btn btn-outline-secondary btn-sm rounded-pill">Cerrar sesión</button>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-5">
+                    <label class="form-label text-dark fw-medium small">Fecha</label>
+                    <input type="text" id="adminDate" class="form-control rounded-3 bg-white" placeholder="Selecciona una fecha" readonly />
+                    <div id="adminCalendarContainer" class="mt-2"></div>
+                  </div>
+                  <div class="col-md-7">
+                    <label class="form-label text-dark fw-medium small d-flex justify-content-between align-items-center">
+                      <span>Horarios</span>
+                      <button type="button" id="adminBlockAllBtn"
+class="btn btn-outline-danger btn-sm rounded-pill">Bloquear todo</button>
+                    </label>
+                    <div id="adminSlotsGrid" class="d-flex flex-column gap-2" style="max-height: 320px; overflow-y: auto;">
+                      <p class="text-muted small m-0 text-center py-4">Selecciona una fecha.</p>
+                    </div>
+                  </div>
+                </div>
+                <hr class="my-3" />
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="adminExportBtn" class="btn btn-outline-dark btn-sm rounded-pill"><i class="fa-regular fa-copy me-1"></i>Exportar config</button>
+                    <button type="button" id="adminImportBtn" class="btn btn-outline-dark btn-sm rounded-pill"><i class="fa-regular fa-paste me-1"></i>Importar config</button>
+                  </div>
+                  <small class="text-muted" id="adminExportStatus"></small>
+                </div>
+                <div id="adminImportBox" class="d-none mt-2">
+                  <textarea id="adminImportText" class="form-control rounded-3" rows="2" placeholder="Pega el JSON de configuración aquí"></textarea>
+                  <button type="button" id="adminImportApplyBtn" class="btn btn-dark btn-sm rounded-pill mt-2">Aplicar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = modalHtml.trim();
+    document.body.appendChild(wrapper.firstElementChild);
 
-  adminPasswordInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") adminLoginBtn?.click();
-  });
+    adminModal = document.getElementById("adminModal");
+    adminPanel = document.getElementById("adminPanel");
+    adminDateInput = document.getElementById("adminDate");
+    adminCalendarContainer = document.getElementById("adminCalendarContainer");
+    adminSlotsGrid = document.getElementById("adminSlotsGrid");
+    adminBlockAllBtn = document.getElementById("adminBlockAllBtn");
+    adminExportBtn = document.getElementById("adminExportBtn");
+    adminImportBtn = document.getElementById("adminImportBtn");
+    adminExportStatus = document.getElementById("adminExportStatus");
+    adminImportBox = document.getElementById("adminImportBox");
+    adminImportText = document.getElementById("adminImportText");
+    adminImportApplyBtn = document.getElementById("adminImportApplyBtn");
 
-  adminLogoutBtn?.addEventListener("click", () => {
-    adminPassword = "";
-    setAdminSession(false);
-    hideAdminPanel();
-    if (adminExportStatus) adminExportStatus.textContent = "";
-    const bsModal = bootstrap.Modal.getInstance(adminModal);
-    if (bsModal) bsModal.hide();
-  });
+    const logoutBtn = document.getElementById("adminLogoutBtn");
+    logoutBtn?.addEventListener("click", () => {
+      adminPassword = "";
+      setAdminSession(false);
+      const bsModal = bootstrap.Modal.getInstance(adminModal);
+      if (bsModal) bsModal.hide();
+    });
 
-  adminModal?.addEventListener("hidden.bs.modal", () => {
-    if (!getAdminSession()) {
-      hideAdminPanel();
-    }
-  });
+    adminBlockAllBtn?.addEventListener("click", async () => {
+      const dateStr = adminDateInput?.value;
+      if (!dateStr) return;
+      if (API_CONFIGURED) {
+        const cached = slotsFromCache(dateStr);
+        const currentlyBlocked = cached?.all_blocked;
+        await apiPost('/api/admin/block-day/', { date: dateStr, block: !currentlyBlocked }, adminPassword);
+        const data = await fetchSlotsFromApi(dateStr);
+        renderAdminSlots(dateStr);
+        return;
+      }
+      const blocked = getAdminBlocked();
+      const isAllBlocked = blocked[dateStr] === "__all__";
+      if (isAllBlocked) {
+        delete blocked[dateStr];
+      } else {
+        blocked[dateStr] = "__all__";
+      }
+      if (Object.keys(blocked).length === 0) {
+        window.localStorage.removeItem(ADMIN_BLOCKED_KEY);
+      } else {
+        saveAdminBlocked(blocked);
+      }
+      renderAdminSlots(dateStr);
+    });
 
-  adminModal?.addEventListener("show.bs.modal", () => {
-    if (getAdminSession()) {
-      showAdminPanel();
-      initAdminDatePicker();
-    }
-  });
+    adminExportBtn?.addEventListener("click", async () => {
+      if (API_CONFIGURED) {
+        const result = await apiGet(`/api/admin/export/?admin_password=${adminPassword}`);
+        if (result) {
+          const output = JSON.stringify(result, null, 2);
+          navigator.clipboard.writeText(output).then(() => {
+            if (adminExportStatus) adminExportStatus.textContent = "Configuración copiada al portapapeles.";
+          }).catch(() => {
+            if (adminExportStatus) adminExportStatus.textContent = "Copia manual: " + output;
+          });
+        } else {
+          if (adminExportStatus) adminExportStatus.textContent = "Error al exportar.";
+        }
+        if (adminImportBox) adminImportBox.classList.add("d-none");
+        return;
+      }
+      const blocked = getAdminBlocked();
+      const output = JSON.stringify(blocked, null, 0);
+      navigator.clipboard.writeText(output).then(() => {
+        if (adminExportStatus) adminExportStatus.textContent = "Configuración copiada al portapapeles.";
+      }).catch(() => {
+        if (adminExportStatus) adminExportStatus.textContent = "Copia manual: " + output;
+      });
+      if (adminImportBox) adminImportBox.classList.add("d-none");
+    });
+
+    adminImportBtn?.addEventListener("click", () => {
+      if (adminImportBox) adminImportBox.classList.toggle("d-none");
+      if (adminExportStatus) adminExportStatus.textContent = "";
+    });
+
+    adminImportApplyBtn?.addEventListener("click", async () => {
+      const text = adminImportText?.value?.trim();
+      if (!text) return;
+      if (API_CONFIGURED) {
+        try {
+          const parsed = JSON.parse(text);
+          const result = await apiPost('/api/admin/import/', parsed, adminPassword);
+          if (result && result.ok) {
+            if (adminImportBox) adminImportBox.classList.add("d-none");
+            if (adminImportText) adminImportText.value = "";
+            if (adminExportStatus) adminExportStatus.textContent = "Configuración importada correctamente.";
+            const dateStr = adminDateInput?.value;
+            if (dateStr) {
+              await fetchSlotsFromApi(dateStr);
+              renderAdminSlots(dateStr);
+            }
+          } else {
+            if (adminExportStatus) adminExportStatus.textContent = "Error al importar.";
+          }
+        } catch {
+          if (adminExportStatus) adminExportStatus.textContent = "JSON inválido. Revisa el formato.";
+        }
+        return;
+      }
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed === "object" && !Array.isArray(parsed)) {
+          saveAdminBlocked(parsed);
+          if (adminImportBox) adminImportBox.classList.add("d-none");
+          if (adminImportText) adminImportText.value = "";
+          if (adminExportStatus) adminExportStatus.textContent = "Configuración importada correctamente.";
+          const dateStr = adminDateInput?.value;
+          if (dateStr) renderAdminSlots(dateStr);
+        } else {
+          if (adminExportStatus) adminExportStatus.textContent = "Formato inválido. Debe ser un objeto JSON.";
+        }
+      } catch (_e) {
+        if (adminExportStatus) adminExportStatus.textContent = "JSON inválido. Revisa el formato.";
+      }
+    });
+  }
+
+  function initAdminAuth(password) {
+    adminPassword = password;
+    setAdminSession(true);
+    buildAdminModal();
+    new bootstrap.Modal(adminModal).show();
+    initAdminDatePicker();
+  }
 
   let adminFlatpickr = null;
   function initAdminDatePicker() {
@@ -1065,109 +1171,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  adminBlockAllBtn?.addEventListener("click", async () => {
-    const dateStr = adminDateInput?.value;
-    if (!dateStr) return;
-    if (API_CONFIGURED) {
-      const cached = slotsFromCache(dateStr);
-      const currentlyBlocked = cached?.all_blocked;
-      await apiPost('/api/admin/block-day/', { date: dateStr, block: !currentlyBlocked }, adminPassword);
-      const data = await fetchSlotsFromApi(dateStr);
-      renderAdminSlots(dateStr);
-      return;
-    }
-    const blocked = getAdminBlocked();
-    const isAllBlocked = blocked[dateStr] === "__all__";
-    if (isAllBlocked) {
-      delete blocked[dateStr];
-    } else {
-      blocked[dateStr] = "__all__";
-    }
-    if (Object.keys(blocked).length === 0) {
-      window.localStorage.removeItem(ADMIN_BLOCKED_KEY);
-    } else {
-      saveAdminBlocked(blocked);
-    }
-    renderAdminSlots(dateStr);
-  });
-
-  adminExportBtn?.addEventListener("click", async () => {
-    if (API_CONFIGURED) {
-      const result = await apiGet(`/api/admin/export/?admin_password=${adminPassword}`);
-      if (result) {
-        const output = JSON.stringify(result, null, 2);
-        navigator.clipboard.writeText(output).then(() => {
-          if (adminExportStatus) adminExportStatus.textContent = "Configuración copiada al portapapeles.";
-        }).catch(() => {
-          if (adminExportStatus) adminExportStatus.textContent = "Copia manual: " + output;
-        });
-      } else {
-        if (adminExportStatus) adminExportStatus.textContent = "Error al exportar.";
+  // Secret admin access via ?admin=PASSWORD
+  const urlParams = new URLSearchParams(window.location.search);
+  const adminParam = urlParams.get("admin");
+  if (adminParam) {
+    (async () => {
+      const result = await apiGet(`/api/admin/bookings/?admin_password=${encodeURIComponent(adminParam)}`);
+      if (result && !result.error) {
+        initAdminAuth(adminParam);
       }
-      if (adminImportBox) adminImportBox.classList.add("d-none");
-      return;
-    }
-    const blocked = getAdminBlocked();
-    const output = JSON.stringify(blocked, null, 0);
-    navigator.clipboard.writeText(output).then(() => {
-      if (adminExportStatus) adminExportStatus.textContent = "Configuración copiada al portapapeles.";
-    }).catch(() => {
-      if (adminExportStatus) adminExportStatus.textContent = "Copia manual: " + output;
-    });
-    if (adminImportBox) adminImportBox.classList.add("d-none");
-  });
+    })();
+  }
 
-  adminImportBtn?.addEventListener("click", () => {
-    if (adminImportBox) adminImportBox.classList.toggle("d-none");
-    if (adminExportStatus) adminExportStatus.textContent = "";
-  });
-
-  adminImportApplyBtn?.addEventListener("click", async () => {
-    const text = adminImportText?.value?.trim();
-    if (!text) return;
-    if (API_CONFIGURED) {
-      try {
-        const parsed = JSON.parse(text);
-        const result = await apiPost('/api/admin/import/', parsed, adminPassword);
-        if (result && result.ok) {
-          if (adminImportBox) adminImportBox.classList.add("d-none");
-          if (adminImportText) adminImportText.value = "";
-          if (adminExportStatus) adminExportStatus.textContent = "Configuración importada correctamente.";
-          const dateStr = adminDateInput?.value;
-          if (dateStr) {
-            await fetchSlotsFromApi(dateStr);
-            renderAdminSlots(dateStr);
-          }
-        } else {
-          if (adminExportStatus) adminExportStatus.textContent = "Error al importar.";
-        }
-      } catch {
-        if (adminExportStatus) adminExportStatus.textContent = "JSON inválido. Revisa el formato.";
-      }
-      return;
-    }
-    try {
-      const parsed = JSON.parse(text);
-      if (typeof parsed === "object" && !Array.isArray(parsed)) {
-        saveAdminBlocked(parsed);
-        if (adminImportBox) adminImportBox.classList.add("d-none");
-        if (adminImportText) adminImportText.value = "";
-        if (adminExportStatus) adminExportStatus.textContent = "Configuración importada correctamente.";
-        const dateStr = adminDateInput?.value;
-        if (dateStr) renderAdminSlots(dateStr);
-      } else {
-        if (adminExportStatus) adminExportStatus.textContent = "Formato inválido. Debe ser un objeto JSON.";
-      }
-    } catch (_e) {
-      if (adminExportStatus) adminExportStatus.textContent = "JSON inválido. Revisa el formato.";
-    }
-  });
-
-  // Open admin panel via URL param ?gestion
-  if (window.location.search.includes("gestion") && adminModal) {
-    if (getAdminSession()) {
-      const bsModal = new bootstrap.Modal(adminModal);
-      bsModal.show();
+  // Enable submit button when form is valid
+  const bookingSubmitBtn = document.getElementById("bookingSubmitBtn");
+  const privacyConsent = document.getElementById("privacyConsent");
+  function updateSubmitBtn() {
+    const fullName = document.getElementById("fullName")?.value.trim();
+    const email = document.getElementById("email")?.value.trim();
+    const phone = document.getElementById("phone")?.value.trim();
+    const checked = privacyConsent?.checked;
+    if (bookingSubmitBtn) {
+      bookingSubmitBtn.disabled = !(fullName && email && phone && checked);
     }
   }
+  ["fullName", "email", "phone"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", updateSubmitBtn);
+  });
+  privacyConsent?.addEventListener("change", updateSubmitBtn);
 });

@@ -911,10 +911,19 @@
               <textarea id="reason" name="reason" class="form-control rounded-3" rows="3" placeholder="Describe brevemente qué te gustaría trabajar en el proceso terapéutico"></textarea>
             </div>
 
+            <div class="mb-3">
+              <div class="form-check">
+                <input type="checkbox" id="privacyConsent" class="form-check-input" required />
+                <label for="privacyConsent" class="form-check-label text-muted small">
+                  He leído y acepto que los datos proporcionados serán utilizados exclusivamente para gestionar mi solicitud de atención psicológica, conforme a la Ley 19.628 sobre protección de datos personales.
+                </label>
+              </div>
+            </div>
+
             <p id="formStatus" class="small text-danger" aria-live="polite"></p>
 
             <div class="d-grid">
-              <button type="submit" class="btn btn-dark py-3 rounded-3 d-flex align-items-center justify-content-center gap-2 fw-medium">
+              <button type="submit" id="bookingSubmitBtn" class="btn btn-dark py-3 rounded-3 d-flex align-items-center justify-content-center gap-2 fw-medium" disabled>
                 <i class="fa-regular fa-paper-plane"></i>
                 Enviar solicitud
               </button>
@@ -925,68 +934,7 @@
     </div>
   </div>
 
-  <!-- ADMIN MODAL -->
-  <div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header border-0 bg-light p-4 pb-0">
-          <h3 class="h4 fw-bold text-dark mb-1" id="adminTitle">Panel de Administración</h3>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body p-4">
-          <div id="adminLogin">
-            <div class="admin-lock-icon">
-              <i class="fa-regular fa-lock"></i>
-            </div>
-            <p class="text-muted small text-center mb-3">Ingresa la contraseña para acceder al panel de gestión.</p>
-            <div class="d-flex gap-2">
-              <input type="password" id="adminPassword" class="form-control rounded-3" placeholder="Contraseña" />
-              <button type="button" id="adminLoginBtn" class="btn btn-dark rounded-3 px-4">Entrar</button>
-            </div>
-            <p id="adminLoginError" class="small text-danger mt-2 d-none text-center">Contraseña incorrecta.</p>
-          </div>
-          <div id="adminPanel" class="d-none">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <p class="text-muted small mb-0">Gestiona los horarios disponibles, confirma reservas y bloquea horas.</p>
-              <button type="button" id="adminLogoutBtn" class="btn btn-outline-secondary btn-sm rounded-pill">Cerrar sesión</button>
-            </div>
-            <div class="row g-3">
-              <div class="col-md-5">
-                <label class="form-label text-dark fw-medium small">Fecha</label>
-                <input type="text" id="adminDate" class="form-control rounded-3 bg-white" placeholder="Selecciona una fecha" readonly />
-                <div id="adminCalendarContainer" class="mt-2"></div>
-              </div>
-              <div class="col-md-7">
-                <label class="form-label text-dark fw-medium small d-flex justify-content-between align-items-center">
-                  <span>Horarios</span>
-                  <button type="button" id="adminBlockAllBtn" class="btn btn-outline-danger btn-sm rounded-pill">Bloquear todo</button>
-                </label>
-                <div id="adminSlotsGrid" class="d-flex flex-column gap-2" style="max-height: 320px; overflow-y: auto;">
-                  <p class="text-muted small m-0 text-center py-4">Selecciona una fecha.</p>
-                </div>
-              </div>
-            </div>
-            <hr class="my-3" />
-            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
-              <div class="d-flex gap-2 flex-wrap">
-                <button type="button" id="adminExportBtn" class="btn btn-outline-dark btn-sm rounded-pill">
-                  <i class="fa-regular fa-copy me-1"></i>Exportar config
-                </button>
-                <button type="button" id="adminImportBtn" class="btn btn-outline-dark btn-sm rounded-pill">
-                  <i class="fa-regular fa-paste me-1"></i>Importar config
-                </button>
-              </div>
-              <small class="text-muted" id="adminExportStatus"></small>
-            </div>
-            <div id="adminImportBox" class="d-none mt-2">
-              <textarea id="adminImportText" class="form-control rounded-3" rows="2" placeholder="Pega el JSON de configuración aquí"></textarea>
-              <button type="button" id="adminImportApplyBtn" class="btn btn-dark btn-sm rounded-pill mt-2">Aplicar</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <!-- COOKIES -->
   <div class="cookie-banner position-fixed bottom-0 start-0 w-100 p-3 bg-dark text-white border-top shadow-lg z-3" id="cookieBanner" hidden>
