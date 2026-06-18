@@ -683,57 +683,21 @@ document.addEventListener("DOMContentLoaded", () => {
     downloadPdfBtn.disabled = true;
     const originalText = downloadPdfBtn.innerHTML;
     downloadPdfBtn.innerHTML = '<i class="fa-regular fa-spinner fa-spin me-2"></i>Generando PDF...';
-
-    async function getGuideHTML() {
-      try {
-        const response = await fetch("./guia-ansiedad.html");
-        return await response.text();
-      } catch (_e1) {
-        const tmpl = document.getElementById("guideContent");
-        if (tmpl) {
-          const frag = tmpl.content.cloneNode(true);
-          const tmp = document.createElement("div");
-          tmp.appendChild(frag);
-          return tmp.innerHTML;
-        }
-        throw new Error("No guide content available");
-      }
-    }
-
-    async function renderPDF(html) {
-      const wrapper = document.createElement("div");
-      wrapper.id = "guidePdfContent";
-      wrapper.innerHTML = html;
-      wrapper.style.cssText = "position:fixed;top:0;left:0;width:100%;background:#f7f4ee;z-index:-1;opacity:0.001;pointer-events:none;";
-      document.body.appendChild(wrapper);
-      await Promise.race([
-        document.fonts.ready,
-        new Promise((r) => setTimeout(r, 2000))
-      ]);
-      await new Promise((r) => setTimeout(r, 1000));
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: "guia-ansiedad-franco-alvarez.pdf",
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-      };
-      await html2pdf().set(opt).from(wrapper).save();
-      document.body.removeChild(wrapper);
-    }
-
     try {
-      const html = await getGuideHTML();
-      await renderPDF(html);
-    } catch (_err) {
-      try {
-        const w = window.open("./guia-ansiedad.html", "_blank");
-        if (w) {
-          w.onload = function () { w.print(); };
-        }
-      } catch (_e2) {
-        window.open("./guia-ansiedad.html", "_blank");
-      }
+      const url = API_CONFIGURED ? `${API_URL}/api/download-guide/` : `/api/download-guide/`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error del servidor");
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "guia-ansiedad-franco-alvarez.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open("./guia-ansiedad.html", "_blank");
     }
     downloadPdfBtn.disabled = false;
     downloadPdfBtn.innerHTML = originalText;
