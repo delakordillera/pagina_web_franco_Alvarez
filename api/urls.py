@@ -10,6 +10,6 @@ urlpatterns = [
     path('api/admin/export/', views.admin_export, name='admin_export'),
     path('api/admin/import/', views.admin_import, name='admin_import'),
     path('api/admin/bookings/', views.admin_bookings, name='admin_bookings'),
+    path('api/ping/', views._ping, name='_ping'),
     path('api/download-guide/', views.download_guide_pdf, name='download_guide_pdf'),
-    path('api/_setup/install-reportlab/', views._setup_install_reportlab, name='setup_install_reportlab'),
 ]

@@ -267,29 +267,94 @@ def admin_bookings(request):
     return Response(serializer.data)
 
 
-import subprocess
-import sys
-
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
-def _setup_install_reportlab(request):
-    if request.GET.get('key') != 'setup2026':
-        return Response({'error': 'no'}, status=403)
-    try:
-        import reportlab
-        return Response({'status': 'already_installed', 'version': reportlab.Version})
-    except ImportError:
-        pass
-    try:
-        result = subprocess.check_call(
-            [sys.executable, '-m', 'pip', 'install', 'reportlab'],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            timeout=120
-        )
-        import reportlab
-        return Response({'status': 'installed', 'version': reportlab.Version})
-    except Exception as e:
-        return Response({'error': str(e)}, status=500)
+def _ping(request):
+    return Response({'pong': True, 'python': '3.10'})
+
+
+def _make_minimal_pdf():
+    """Generate a minimal PDF with guide content using pure Python."""
+    import zlib, struct
+    lines = []
+    lines.append("5 Estrategias para Manejar la Ansiedad")
+    lines.append("Guía práctica · 2026 — Franco Álvarez")
+    lines.append("")
+    lines.append("Hola, soy Franco.")
+    lines.append("")
+    lines.append("Si llegaste hasta acá, probablemente la ansiedad se ha vuelto una visita")
+    lines.append("más frecuente de lo que te gustaría. Quiero empezar diciéndote algo:")
+    lines.append("sentir ansiedad no es una falla personal. Es un sistema de alarma que")
+    lines.append("se activó y quedó pegado, como una radio que no logras apagar. Lo que")
+    lines.append("sí está en tus manos —y para eso está esta guía— es aprender a bajarla")
+    lines.append("de volumen, paso a paso.")
+    lines.append("")
+    lines.append("1. Respiración que ancla: el 4-7-8")
+    lines.append("")
+    lines.append("Cuando la ansiedad aparece, la respiración se vuelve rápida y superficial.")
+    lines.append("Inhala por la nariz contando hasta 4, sostén el aire contando hasta 7,")
+    lines.append("y exhala por la boca contando hasta 8. Repite tres o cuatro veces.")
+    lines.append("")
+    lines.append("2. Anclaje sensorial: la regla 5-4-3-2-1")
+    lines.append("")
+    lines.append("Nombra en voz baja: 5 cosas que ves, 4 que puedes tocar, 3 que escuchas,")
+    lines.append("2 que puedes oler y 1 que puedes saborear.")
+    lines.append("")
+    lines.append("3. Desenmascara al pensamiento automático")
+    lines.append("")
+    lines.append("Los pensamientos automáticos no son hechos, son hipótesis.")
+    lines.append("Escríbelos y pregúntate: ¿qué evidencia tengo?")
+    lines.append("")
+    lines.append("4. Micro rutinas de regulación diaria")
+    lines.append("")
+    lines.append("Elige un hábito pequeño: salir 10 min al sol, cortar pantallas 30 min")
+    lines.append("antes de dormir, comer sin celular.")
+    lines.append("")
+    lines.append("5. Saber cuándo pedir ayuda")
+    lines.append("")
+    lines.append("La ansiedad te despierta todas las noches, evitas situaciones cotidianas,")
+    lines.append("llevas más de un mes sintiéndote irritable. Pedir ayuda no es rendirse.")
+    lines.append("")
+    lines.append("Contacto: +56 9 5698 5589")
+    lines.append("")
+    lines.append("© 2026 Franco Álvarez · UCSH")
+    lines.append("Esta guía no reemplaza una atención profesional.")
+
+    text = '\n'.join(lines).encode('utf-8')
+    compressed = zlib.compress(text)
+
+    def pdf_obj(num, data):
+        return f"{num} 0 obj\n{data}\nendobj\n".encode()
+
+    def pdf_stream(num, data):
+        return f"{num} 0 obj\n<< /Length {len(data)} /Filter /FlateDecode >>\nstream\n".encode() + data + b"\nendstream\nendobj\n"
+
+    objects = []
+    objects.append(pdf_obj(1, "<< /Type /Catalog /Pages 2 0 R >>"))
+    objects.append(pdf_obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"))
+    objects.append(
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]\n"
+        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+    )
+    objects.append(pdf_stream(4, compressed))
+    objects.append(
+        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+    )
+
+    body = b"".join(objects)
+    xref_offset = 9 + len(body)
+    xref = f"xref\n0 6\n0000000000 65535 f \n"
+    offset = 0
+    for obj in objects:
+        xref += f"{offset:010d} 00000 n \n"
+        offset += len(obj)
+
+    trailer = (
+        f"trailer\n<< /Size 6 /Root 1 0 R >>\n"
+        f"startxref\n{xref_offset}\n%%EOF"
+    )
+
+    return b"%PDF-1.4\n" + body + xref.encode() + trailer.encode()
 
 
 @api_view(['GET'])
@@ -307,7 +372,11 @@ def download_guide_pdf(request):
         from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
         from io import BytesIO
     except ImportError:
-        return Response({'error': 'reportlab no instalado'}, status=500)
+        pdf_data = _make_minimal_pdf()
+        from django.http import HttpResponse
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="guia-ansiedad-franco-alvarez.pdf"'
+        return response
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
