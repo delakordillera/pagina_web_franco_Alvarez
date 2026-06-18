@@ -402,7 +402,7 @@ def download_guide_pdf(request):
     tip = ParagraphStyle('Tip', fontName='Helvetica-Oblique', fontSize=9, textColor=sage, leading=13, leftIndent=12, spaceAfter=8)
     center = ParagraphStyle('Center', parent=body, alignment=TA_CENTER, fontSize=9, textColor=HexColor('#5e6a5f'))
     cta_title = ParagraphStyle('CtaT', fontName='Helvetica-Bold', fontSize=14, textColor=cream, alignment=TA_CENTER, spaceBefore=12, spaceAfter=6)
-    cta_body = ParagraphStyle('CtaB', fontName='Helvetica', fontSize=9, textColor=HexColor('rgba(252,250,246,0.65)'), alignment=TA_CENTER, leading=13, spaceAfter=10)
+    cta_body = ParagraphStyle('CtaB', fontName='Helvetica', fontSize=9, textColor=HexColor('#fcfaf6'), alignment=TA_CENTER, leading=13, spaceAfter=10)
     footer = ParagraphStyle('Footer', fontName='Helvetica', fontSize=7.5, textColor=HexColor('#5e6a5f'), alignment=TA_CENTER, leading=10)
 
     elements = []
