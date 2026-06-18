@@ -169,18 +169,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Admin storage functions (hoisted) ---
-  const ADMIN_PASSWORD_KEY = "franco_admin_password";
   const ADMIN_BLOCKED_KEY = "franco_admin_blocked";
   const ADMIN_BOOKING_STATUS_KEY = "franco_admin_booking_status";
   const ADMIN_SESSION_KEY = "franco_admin_session";
-  const DEFAULT_ADMIN_PASSWORD = "terapia2026";
-
-  function initAdminPassword() {
-    if (!window.localStorage.getItem(ADMIN_PASSWORD_KEY)) {
-      window.localStorage.setItem(ADMIN_PASSWORD_KEY, DEFAULT_ADMIN_PASSWORD);
-    }
-  }
-  initAdminPassword();
 
   function getAdminBlocked() {
     try {
@@ -792,16 +783,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   adminLoginBtn?.addEventListener("click", async () => {
     const pwd = adminPasswordInput?.value || "";
-    let ok = false;
-    if (API_URL) {
-      const result = await apiPost('/api/admin/bookings/', {}, pwd);
-      ok = result && result.ok;
-    }
-    if (!ok) {
-      const storedPwd = window.localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-      ok = pwd === storedPwd;
-    }
-    if (ok) {
+    const result = await apiGet(`/api/admin/bookings/?admin_password=${encodeURIComponent(pwd)}`);
+    if (result && !result.error) {
       adminPassword = pwd;
       setAdminSession(true);
       showAdminPanel();
