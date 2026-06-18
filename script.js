@@ -350,6 +350,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (window.flatpickr && bookingDateInput && calendarContainer) {
+    // Ensure Spanish locale is loaded
+    if (!flatpickr.l10ns.es) {
+      flatpickr.l10ns.es = {
+        weekdays: { shorthand: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], longhand: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'] },
+        months: { shorthand: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], longhand: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] },
+        ordinal: () => 'º', firstDayOfWeek: 1, rangeSeparator: ' a ', weekAbbreviation: 'Sem', scrollTitle: 'Desplazar para cambiar', toggleTitle: 'Cambiar', amPM: ['AM','PM'], yearAriaLabel: 'Año', time_24hr: true
+      };
+    }
     flatpickr.localize(flatpickr.l10ns.es);
 
     flatpickr(bookingDateInput, {
